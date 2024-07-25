@@ -1,63 +1,58 @@
 from django.forms import model_to_dict
 from django.shortcuts import render
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from first.models import CarModel
-
+from first.serializer import CarSerializer
+from rest_framework.generics import GenericAPIView
 
 # Create your views here.
 
-class CarView(APIView):
+class CarView(GenericAPIView):
 
     def get(self, *args, **kwargs):
         cars = CarModel.objects.all()
-        res = [model_to_dict(car) for car in cars]
-        return Response(res)
+        serializer = CarSerializer(cars, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, *args, **kwargs):
         data = self.request.data
-        car = CarModel.objects.create(**data)
-        car_dict = model_to_dict(car)
-        return Response(car_dict)
+        serializer = CarSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class CarViewUpdateDelte(APIView):
+class CarViewUpdateDelte(GenericAPIView):
+    serializer_class = CarSerializer
+    queryset = CarModel.objects.all()
 
     def get(self, *args, **kwargs):
-        pk = kwargs['pk']
-        try:
-            car = CarModel.objects.get(pk=pk)
 
-        except CarModel.DoesNotExist:
-            return Response('not found')
-
-        return Response(model_to_dict(car))
+        car = self.get_object()
+        serializer = CarSerializer(car)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, *args, **kwargs):
-        pk = kwargs['pk']
+
         data = self.request.data
+        car = self.get_object()
+        serializer = CarSerializer(car, data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-        try:
-            car = CarModel.objects.get(pk=pk)
 
-        except CarModel.DoesNotExist:
-            return Response('not found')
-
-        car.brand = data['brand']
-        car.model = data['model']
-        car.year = data['year']
-        car.price = data['price']
-        car.save()
-        return Response(model_to_dict(car))
+    def patch(self, *args, **kwargs):
+        data = self.request.data
+        car = self.get_object()
+        serializer = CarSerializer(car, data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, *args, **kwargs):
-        pk = kwargs['pk']
-
-        try:
-            car = CarModel.objects.get(pk=pk).delete()
-
-        except CarModel.DoesNotExist:
-            return Response('not found')
-
-        return Response('')
+        self.get_object().delete()
+        return Response('', status=status.HTTP_204_NO_CONTENT)
