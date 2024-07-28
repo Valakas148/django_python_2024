@@ -2,10 +2,12 @@ from django.db.models import QuerySet
 from django.http import QueryDict
 
 from first.models import CarModel
+from first.serializer import CarSerializer
 
 
 def car_filter(query: QueryDict)-> QuerySet:
     qs = CarModel.objects.all()
+    serializer = CarSerializer()
     print('aaa')
     for key, value in query.items():
         match key:
@@ -27,6 +29,18 @@ def car_filter(query: QueryDict)-> QuerySet:
                 qs = qs.filter(year__lt=value)
             case 'brand_in':
                 qs = qs.filter(brand__in=[value])
-            # case 'brand_start':
-            #     qs = qs.filter(brand__in=[value].order_by(value))
+            case 'brand_start':
+                 qs = qs.filter(brand__istartswith=value)
+            case 'brand_end':
+                qs = qs.filter(brand__iendswith=value)
+            case 'brand_contains':
+                qs = qs.filter(brand__icontains=value)
+            case 'order':
+                fields = serializer.get_fields().keys()
+                fields = list(fields) + [f'-{field}' for field in fields]
+                if value not in fields:
+                    raise ValueError(f'Uncorrect input')
+                qs = qs.order_by(value)
+            case _:
+                return (f"Uncorrect params {key}")
     return qs
